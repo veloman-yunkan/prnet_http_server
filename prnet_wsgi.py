@@ -1,7 +1,9 @@
 import os
+import json
+import sys
 from multipart import parse_form_data
 import tempfile
-import shutil
+from shutil import rmtree
 
 class TempDir:
     def __init__(self):
@@ -10,7 +12,7 @@ class TempDir:
 
     def __del__(self):
         print 'Removing temporary directory ' + self.tempdir
-        shutil.rmtree(self.tempdir)
+        rmtree(self.tempdir)
 
     def join(self, fname):
         return os.path.join(self.tempdir, fname)
@@ -56,7 +58,7 @@ PRNET_MAX_IMAGE_SIZE = int(os.environ.get('PRNET_MAX_IMAGE_SIZE', '5000000'))
 
 from httplib import HTTPException
 
-def validate_request(environ):
+def get_posted_image(environ):
     path = environ['PATH_INFO']
     if environ['REQUEST_METHOD'] != 'POST' or path != '/':
         raise HTTPException('405 Method Not Allowed')
@@ -66,6 +68,12 @@ def validate_request(environ):
         raise HTTPException('411 Length Required')
     elif content_length > PRNET_MAX_IMAGE_SIZE:
         raise HTTPException('413 Payload Too Large')
+
+    forms, files = parse_form_data(environ)
+    img = files['image']
+    imgfile_path = tempdir.join(img.filename)
+    img.save_as(imgfile_path)
+    return imgfile_path
 
 def read_file_chunks(file_path):
     with open(file_path, 'rb') as f:
@@ -77,21 +85,25 @@ def read_file_chunks(file_path):
 
 def handle_request(environ, start_response):
     try:
-        validate_request(environ)
-        forms, files = parse_form_data(environ)
-        img = files['image']
-        imgfile=tempdir.join(img.filename)
-        img.save_as(imgfile)
-        modelfile=prnet(imgfile)
-        filesize = os.stat(modelfile).st_size
-        fname = modelfile.split('/')[-1]
+        imgfile_path = get_posted_image(environ)
+        modelfile_path = prnet(imgfile_path)
+        modelfile_size = os.stat(modelfile_path).st_size
+        fname = modelfile_path.split('/')[-1]
         response_headers = [
                     ('Content-Type', 'application/octet-stream'),
-                    ('Content-Length', str(filesize)),
+                    ('Content-Length', str(modelfile_size)),
                     ('Content-Disposition', 'attachment; filename="%s"' % fname)
                 ]
         start_response('200 OK', response_headers)
-        for file_chunk in read_file_chunks(modelfile):
+        for file_chunk in read_file_chunks(modelfile_path):
             yield file_chunk
     except HTTPException as e:
         start_response(e[0], ())
+    except Exception as e:
+        response_body = json.dumps({ 'error' : e.message })
+        response_headers = [
+                    ('Content-Type', 'application/json'),
+                    ('Content-Length', str(len(response_body))),
+                ]
+        start_response('500 Internal Server Error', response_headers, sys.exc_info())
+        yield response_body
