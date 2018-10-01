@@ -83,19 +83,21 @@ def read_file_chunks(file_path):
                 break
             yield file_data
 
+def get_response_headers(result_file_path):
+    result_file_size = os.stat(result_file_path).st_size
+    file_name = result_file_path.split('/')[-1]
+    return [
+            ('Content-Type', 'application/octet-stream'),
+            ('Content-Length', str(result_file_size)),
+            ('Content-Disposition', 'attachment; filename="%s"' % file_name)
+        ]
+
 def handle_request(environ, start_response):
     try:
         imgfile_path = get_posted_image(environ)
-        modelfile_path = prnet(imgfile_path)
-        modelfile_size = os.stat(modelfile_path).st_size
-        fname = modelfile_path.split('/')[-1]
-        response_headers = [
-                    ('Content-Type', 'application/octet-stream'),
-                    ('Content-Length', str(modelfile_size)),
-                    ('Content-Disposition', 'attachment; filename="%s"' % fname)
-                ]
-        start_response('200 OK', response_headers)
-        for file_chunk in read_file_chunks(modelfile_path):
+        result_file_path = prnet(imgfile_path)
+        start_response('200 OK', get_response_headers(result_file_path))
+        for file_chunk in read_file_chunks(result_file_path):
             yield file_chunk
     except HTTPException as e:
         start_response(e[0], ())
