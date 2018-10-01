@@ -17,6 +17,11 @@ class TempDir:
     def join(self, fname):
         return os.path.join(self.tempdir, fname)
 
+    def cleanup(self):
+        for f in os.listdir(self.tempdir):
+            os.remove(self.join(f))
+
+
 tempdir = TempDir()
 
 import numpy as np
@@ -109,3 +114,5 @@ def handle_request(environ, start_response):
                 ]
         start_response('500 Internal Server Error', response_headers, sys.exc_info())
         yield response_body
+    finally:
+        tempdir.cleanup()
