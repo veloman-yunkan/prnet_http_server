@@ -67,6 +67,14 @@ def validate_request(environ):
     elif content_length > PRNET_MAX_IMAGE_SIZE:
         raise HTTPException('413 Payload Too Large')
 
+def read_file_chunks(file_path):
+    with open(file_path, 'rb') as f:
+        while True:
+            file_data = f.read(32768)
+            if file_data is None or len(file_data) == 0:
+                break
+            yield file_data
+
 def handle_request(environ, start_response):
     try:
         validate_request(environ)
@@ -83,11 +91,7 @@ def handle_request(environ, start_response):
                     ('Content-Disposition', 'attachment; filename="%s"' % fname)
                 ]
         start_response('200 OK', response_headers)
-        with open(modelfile, 'rb') as f:
-            while True:
-                file_data = f.read(32768)
-                if file_data is None or len(file_data) == 0:
-                    break
-                yield file_data
+        for file_chunk in read_file_chunks(modelfile):
+            yield file_chunk
     except HTTPException as e:
         start_response(e[0], ())
