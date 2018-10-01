@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+cd "$(dirname "$0")"
+
+echo "Starting PRNet HTTP server..."
+PRNET_MAX_IMAGE_SIZE=20000 gunicorn prnet_wsgi:handle_request &> /dev/null &
+trap 'kill %1; wait; echo "PRNet HTTP server exited"' EXIT
+sleep 1
+
+sed -ne '/^curl/,/^}/ {s/^# //;p}' "$0"|head -n -1
+
+normalize()
+{
+    sed 's/\r$//'|
+    sed '/^HTTP\/1\.1 100 Continue/ {N;p;d};
+        s/^\(Date\|Server\): .*/\1: ???/;
+        /^$/ {
+            N;N
+            p
+            s/.*/.../
+            p
+            N
+            : repeat
+            $q
+            N
+            s/[^\n]*\n//
+            b repeat;
+        }
+        '
+}
+
+check_output()
+{
+    echo "$@"
+    diff -U10 - <("$@"|normalize)
+}
+
+check_output curl -sD - http://localhost:8000 <<'END'
+HTTP/1.1 405 Method Not Allowed
+Server: ???
+Date: ???
+Connection: close
+Transfer-Encoding: chunked
+
+END
+
+check_output curl -sD - -F abc=def http://localhost:8000/xyz <<'END'
+HTTP/1.1 100 Continue
+
+HTTP/1.1 405 Method Not Allowed
+Server: ???
+Date: ???
+Connection: close
+Transfer-Encoding: chunked
+
+END
+
+check_output curl -sD - -F abc=def -H 'Content-Length:' http://localhost:8000 <<'END'
+HTTP/1.1 100 Continue
+
+HTTP/1.1 411 Length Required
+Server: ???
+Date: ???
+Connection: close
+Transfer-Encoding: chunked
+
+END
+
+check_output curl -sD - -F abc=def -H 'Content-Length: 5000001' http://localhost:8000 <<'END'
+HTTP/1.1 100 Continue
+
+HTTP/1.1 413 Payload Too Large
+Server: ???
+Date: ???
+Connection: close
+Transfer-Encoding: chunked
+
+END
+
+check_output curl -sD - -F image=@PRNet/TestImages/0.jpg http://localhost:8000 <<'END'
+HTTP/1.1 100 Continue
+
+HTTP/1.1 200 OK
+Server: ???
+Date: ???
+Connection: close
+Content-Type: application/octet-stream
+Content-Length: 5532078
+Content-Disposition: attachment; filename="0.jpg.obj"
+
+v 140.088378906 301.859646331 104.281578064 0.529411764706 0.388235294118 0.286274509804
+v 142.88794424 303.291693857 107.830162048 0.478431372549 0.321568627451 0.219607843137
+...
+f 43866 43867 43806
+f 43867 43807 43806
+END

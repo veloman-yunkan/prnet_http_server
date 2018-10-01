@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+cd "$(dirname "$0")"
+
+if [ ! -e PRNet ]
+then
+    ./setup_PRNet
+fi
+
+docker build -f Dockerfile.base -t prnet_http_server:base .
+docker build -f Dockerfile -t prnet_http_server:latest .
