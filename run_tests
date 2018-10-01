@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 
 echo "Starting PRNet HTTP server..."
-PRNET_MAX_IMAGE_SIZE=20000 gunicorn prnet_wsgi:handle_request &> /dev/null &
+PRNET_MAX_IMAGE_SIZE=20000 gunicorn prnet_wsgi:handle_request &
 trap 'kill %1; wait; echo "PRNet HTTP server exited"' EXIT
 sleep 1
 
