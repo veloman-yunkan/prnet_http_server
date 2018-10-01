@@ -52,20 +52,24 @@ def prnet(image_path):
     write_obj_with_colors(obj_path, save_vertices, prn.triangles, colors)
     return obj_path
 
+PRNET_MAX_IMAGE_SIZE = int(os.environ.get('PRNET_MAX_IMAGE_SIZE', '5000000'))
 
-def handle_request(environ, start_response):
+from httplib import HTTPException
+
+def validate_request(environ):
     path = environ['PATH_INFO']
     if environ['REQUEST_METHOD'] != 'POST' or path != '/':
-        start_response('405 Method Not Allowed', ())
-    else:
-        content_length = int(environ.get('CONTENT_LENGTH', '-1'))
-        if content_length == -1:
-            start_response('411 Length Required', ())
-            return
-        elif content_length > int(os.environ.get('PRNET_MAX_IMAGE_SIZE', '5000000')):
-            start_response('413 Payload Too Large', ())
-            return
+        raise HTTPException('405 Method Not Allowed')
 
+    content_length = int(environ.get('CONTENT_LENGTH', '-1'))
+    if content_length == -1:
+        raise HTTPException('411 Length Required')
+    elif content_length > PRNET_MAX_IMAGE_SIZE:
+        raise HTTPException('413 Payload Too Large')
+
+def handle_request(environ, start_response):
+    try:
+        validate_request(environ)
         forms, files = parse_form_data(environ)
         img = files['image']
         imgfile=tempdir.join(img.filename)
@@ -85,3 +89,5 @@ def handle_request(environ, start_response):
                 if file_data is None or len(file_data) == 0:
                     break
                 yield file_data
+    except HTTPException as e:
+        start_response(e[0], ())
