@@ -9,9 +9,8 @@ sleep 1
 
 normalize()
 {
-    sed 's/\r$//'|
-    sed '/^HTTP\/1\.1 100 Continue/ {N;p;d};
-        s/^\(Date\|Server\): .*/\1: ???/;
+    sed '1 { /^HTTP\/1\.1 100 Continue/ {N;d}; }; s/\r$//'|
+    sed '1,/^$/ s/^\(Date\|Server\): .*/\1: ???/;
         /^$/ {
             N;N
             p
@@ -51,8 +50,6 @@ END
 
 # POST to a non root path
 check curl -F abc=def http://localhost:8000/xyz <<'END'
-HTTP/1.1 100 Continue
-
 HTTP/1.1 405 Method Not Allowed
 Server: ???
 Date: ???
@@ -63,8 +60,6 @@ END
 
 # POST without image
 check curl -F abc=def http://localhost:8000 <<'END'
-HTTP/1.1 100 Continue
-
 HTTP/1.1 400 Bad Request
 Server: ???
 Date: ???
@@ -75,8 +70,6 @@ END
 
 # POST with image not a file
 check curl -F image=def http://localhost:8000 <<'END'
-HTTP/1.1 100 Continue
-
 HTTP/1.1 400 Bad Request
 Server: ???
 Date: ???
@@ -87,8 +80,6 @@ END
 
 # POST without content length
 check curl -F abc=def -H 'Content-Length:' http://localhost:8000 <<'END'
-HTTP/1.1 100 Continue
-
 HTTP/1.1 411 Length Required
 Server: ???
 Date: ???
@@ -99,8 +90,6 @@ END
 
 # POST with an image exceeding the max size limit
 check curl -F image=@test_data/large_image.jpg http://localhost:8000 <<'END'
-HTTP/1.1 100 Continue
-
 HTTP/1.1 413 Payload Too Large
 Server: ???
 Date: ???
@@ -111,8 +100,6 @@ END
 
 # POST valid data
 check curl -F image=@test_data/single_face.jpg http://localhost:8000 <<'END'
-HTTP/1.1 100 Continue
-
 HTTP/1.1 200 OK
 Server: ???
 Date: ???
@@ -130,8 +117,6 @@ END
 
 # POST non-image data
 check curl -F image=@"$0" http://localhost:8000 <<'END'
-HTTP/1.1 100 Continue
-
 HTTP/1.1 500 Internal Server Error
 Server: ???
 Date: ???
@@ -144,8 +129,6 @@ END
 
 # POST a faceless image
 check curl -F image=@test_data/no_face.jpg http://localhost:8000 <<'END'
-HTTP/1.1 100 Continue
-
 HTTP/1.1 500 Internal Server Error
 Server: ???
 Date: ???
