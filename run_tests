@@ -109,4 +109,17 @@ Content-Length: 52
 {"error": "cannot identify image file 'run_tests'"}
 END
 
+check_output curl -sD - -F image=@test_data/no_face.jpg http://localhost:8000 <<'END'
+HTTP/1.1 100 Continue
+
+HTTP/1.1 500 Internal Server Error
+Server: ???
+Date: ???
+Connection: close
+Content-Type: application/json
+Content-Length: 34
+
+{"error": "No face in the image"}
+END
+
 test "$failure_count" -eq 0
