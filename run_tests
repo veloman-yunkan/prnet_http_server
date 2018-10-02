@@ -26,9 +26,32 @@ else
   }
 fi
 
+let failure_count=0
+let test_count=0
+report_testing_results()
+{
+    echo '................................'
+    echo
+    echo "$test_count tests were run"
+    if [ "$failure_count" -ne 0 ]
+    then
+        echo "$failure_count of them failed :("
+    else
+        echo "All of them passed :)"
+    fi
+    echo
+}
+
+onexit()
+{
+    stop_server
+    echo "PRNet HTTP server was stoped"
+    report_testing_results
+}
+
 echo "Starting PRNet HTTP server..."
 start_server
-trap 'stop_server; echo "PRNet HTTP server was stoped"' EXIT
+trap 'onexit' EXIT
 sleep 1
 
 normalize()
@@ -55,9 +78,9 @@ curl()
     command curl -sD - "$@"
 }
 
-let failure_count=0
 check()
 {
+    let ++test_count
     echo "$@"
     diff -U10 - <("$@"|normalize) || let ++failure_count
 }
