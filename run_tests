@@ -67,7 +67,7 @@ Content-Length: 0
 
 END
 
-check_output curl -sD - -F image=@PRNet/TestImages/1.jpg http://localhost:8000 <<'END'
+check_output curl -sD - -F image=@test_data/large_image.jpg http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 413 Payload Too Large
@@ -78,7 +78,7 @@ Content-Length: 0
 
 END
 
-check_output curl -sD - -F image=@PRNet/TestImages/0.jpg http://localhost:8000 <<'END'
+check_output curl -sD - -F image=@test_data/single_face.jpg http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 200 OK
@@ -87,7 +87,7 @@ Date: ???
 Connection: close
 Content-Type: application/octet-stream
 Content-Length: 5532078
-Content-Disposition: attachment; filename="0.jpg.obj"
+Content-Disposition: attachment; filename="single_face.jpg.obj"
 
 v 140.088378906 301.859646331 104.281578064 0.529411764706 0.388235294118 0.286274509804
 v 142.88794424 303.291693857 107.830162048 0.478431372549 0.321568627451 0.219607843137
