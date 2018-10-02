@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+cd "$(dirname "$0")"
+
+docker build -f Dockerfile -t prnet_http_server:latest .
