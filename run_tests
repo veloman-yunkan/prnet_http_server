@@ -7,8 +7,6 @@ PRNET_MAX_IMAGE_SIZE=20000 gunicorn prnet_wsgi:handle_request &
 trap 'kill %1; wait; echo "PRNet HTTP server exited"' EXIT
 sleep 1
 
-sed -ne '/^curl/,/^}/ {s/^# //;p}' "$0"|head -n -1
-
 normalize()
 {
     sed 's/\r$//'|
@@ -29,15 +27,20 @@ normalize()
         '
 }
 
+curl()
+{
+    command curl -sD - "$@"
+}
+
 let failure_count=0
-check_output()
+check()
 {
     echo "$@"
     diff -U10 - <("$@"|normalize) || let ++failure_count
 }
 
 # GET request
-check_output curl -sD - http://localhost:8000 <<'END'
+check curl http://localhost:8000 <<'END'
 HTTP/1.1 405 Method Not Allowed
 Server: ???
 Date: ???
@@ -47,7 +50,7 @@ Content-Length: 0
 END
 
 # POST to a non root path
-check_output curl -sD - -F abc=def http://localhost:8000/xyz <<'END'
+check curl -F abc=def http://localhost:8000/xyz <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 405 Method Not Allowed
@@ -59,7 +62,7 @@ Content-Length: 0
 END
 
 # POST without image
-check_output curl -sD - -F abc=def http://localhost:8000 <<'END'
+check curl -F abc=def http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 400 Bad Request
@@ -71,7 +74,7 @@ Content-Length: 0
 END
 
 # POST with image not a file
-check_output curl -sD - -F image=def http://localhost:8000 <<'END'
+check curl -F image=def http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 400 Bad Request
@@ -83,7 +86,7 @@ Content-Length: 0
 END
 
 # POST without content length
-check_output curl -sD - -F abc=def -H 'Content-Length:' http://localhost:8000 <<'END'
+check curl -F abc=def -H 'Content-Length:' http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 411 Length Required
@@ -95,7 +98,7 @@ Content-Length: 0
 END
 
 # POST with an image exceeding the max size limit
-check_output curl -sD - -F image=@test_data/large_image.jpg http://localhost:8000 <<'END'
+check curl -F image=@test_data/large_image.jpg http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 413 Payload Too Large
@@ -107,7 +110,7 @@ Content-Length: 0
 END
 
 # POST valid data
-check_output curl -sD - -F image=@test_data/single_face.jpg http://localhost:8000 <<'END'
+check curl -F image=@test_data/single_face.jpg http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 200 OK
@@ -126,7 +129,7 @@ f 43867 43807 43806
 END
 
 # POST non-image data
-check_output curl -sD - -F image=@"$0" http://localhost:8000 <<'END'
+check curl -F image=@"$0" http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 500 Internal Server Error
@@ -139,8 +142,8 @@ Content-Length: 52
 {"error": "cannot identify image file 'run_tests'"}
 END
 
-# POST an faceless image
-check_output curl -sD - -F image=@test_data/no_face.jpg http://localhost:8000 <<'END'
+# POST a faceless image
+check curl -F image=@test_data/no_face.jpg http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 500 Internal Server Error
