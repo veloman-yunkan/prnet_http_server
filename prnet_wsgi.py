@@ -75,6 +75,9 @@ def get_posted_image(environ):
         raise HTTPException('413 Payload Too Large')
 
     forms, files = parse_form_data(environ)
+    if len(files) != 1 or 'image' not in files:
+        raise HTTPException("400 Bad Request")
+
     img = files['image']
     imgfile_path = tempdir.join(img.filename)
     img.save_as(imgfile_path)
