@@ -1,10 +1,34 @@
 #!/usr/bin/env bash
 
-cd "$(dirname "$0")"
+if [[ $# -gt 1 || $# -eq 1 && "$1" != --use-docker ]]
+then
+    echo "Usage: $0 [--use-docker]"
+    exit 1
+fi
+
+if [ "$1" == --use-docker ]
+then
+  start_server() {
+    docker run --rm -d --name=prnet_http_server_testing \
+	   -e PRNET_MAX_IMAGE_SIZE=20000 -p 8000:8000   \
+	   prnet_http_server:latest
+  }
+  stop_server() {
+    docker stop prnet_http_server_testing
+  }
+else
+  start_server() {
+    cd "$(dirname "$0")"
+    PRNET_MAX_IMAGE_SIZE=20000 gunicorn prnet_wsgi:handle_request &
+  }
+  stop_server() {
+    kill %1; wait
+  }
+fi
 
 echo "Starting PRNet HTTP server..."
-PRNET_MAX_IMAGE_SIZE=20000 gunicorn prnet_wsgi:handle_request &
-trap 'kill %1; wait; echo "PRNet HTTP server exited"' EXIT
+start_server
+trap 'stop_server; echo "PRNet HTTP server was stoped"' EXIT
 sleep 1
 
 normalize()
