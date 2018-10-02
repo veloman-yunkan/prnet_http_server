@@ -29,10 +29,11 @@ normalize()
         '
 }
 
+let failure_count=0
 check_output()
 {
     echo "$@"
-    diff -U10 - <("$@"|normalize)
+    diff -U10 - <("$@"|normalize) || let ++failure_count
 }
 
 check_output curl -sD - http://localhost:8000 <<'END'
@@ -40,7 +41,7 @@ HTTP/1.1 405 Method Not Allowed
 Server: ???
 Date: ???
 Connection: close
-Transfer-Encoding: chunked
+Content-Length: 0
 
 END
 
@@ -51,7 +52,7 @@ HTTP/1.1 405 Method Not Allowed
 Server: ???
 Date: ???
 Connection: close
-Transfer-Encoding: chunked
+Content-Length: 0
 
 END
 
@@ -62,18 +63,18 @@ HTTP/1.1 411 Length Required
 Server: ???
 Date: ???
 Connection: close
-Transfer-Encoding: chunked
+Content-Length: 0
 
 END
 
-check_output curl -sD - -F abc=def -H 'Content-Length: 5000001' http://localhost:8000 <<'END'
+check_output curl -sD - -F image=@PRNet/TestImages/1.jpg http://localhost:8000 <<'END'
 HTTP/1.1 100 Continue
 
 HTTP/1.1 413 Payload Too Large
 Server: ???
 Date: ???
 Connection: close
-Transfer-Encoding: chunked
+Content-Length: 0
 
 END
 
@@ -107,3 +108,5 @@ Content-Length: 52
 
 {"error": "cannot identify image file 'run_tests'"}
 END
+
+test "$failure_count" -eq 0

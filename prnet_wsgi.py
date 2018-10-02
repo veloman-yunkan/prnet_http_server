@@ -131,7 +131,7 @@ def handle_request(environ, start_response):
         for file_chunk in read_file_chunks(result_file_path):
             yield file_chunk
     except HTTPException as e:
-        start_response(e[0], ())
+        start_response(e[0], (('Content-Length', '0'),))
     except Exception as e:
         headers, body = make_error_response(e)
         start_response('500 Internal Server Error', headers, sys.exc_info())
