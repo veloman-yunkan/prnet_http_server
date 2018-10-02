@@ -42,3 +42,27 @@ created by the `./build_docker_image` script.
 
     ./run_tests --use-docker
 
+## Using the dockerized web-server
+
+Start the server with
+
+    docker run --rm -d -p 8000:8000 prnet_http_server:latest
+
+Send an image to it with
+
+    curl -OJF image=@test_data/single_face.jpg http://localhost:8000
+    
+When starting the server, you can specify the upper limit on the image file size
+(in bytes) through the `PRNET_MAX_IMAGE_SIZE` environment variable:
+
+    # Make the server reject images exceeding 5MB
+    docker run --rm -d -p 8000:8000 -e PRNET_MAX_IMAGE_SIZE=5000000 prnet_http_server:latest
+
+The container runs the [gunicorn](https://gunicorn.org/) web server inside and allows
+to specify its [settings](http://docs.gunicorn.org/en/stable/settings.html) through the
+command line. For example, to make the web-server use 4
+[worker processes](http://docs.gunicorn.org/en/stable/settings.html#worker-processes)
+for handling requests, provide the `--workers=4` option:
+
+    docker run --rm -d -p 8000:8000 prnet_http_server:latest --workers=4
+    #                                                        ^^^^^^^^^^^
