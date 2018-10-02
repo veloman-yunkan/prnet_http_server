@@ -97,6 +97,32 @@ def get_response_headers(result_file_path):
             ('Content-Disposition', 'attachment; filename="%s"' % file_name)
         ]
 
+msg_replacement_rules = (
+    (
+        r"^cannot identify image file <open file u'.*/(.+)', mode 'rb' at .*>$",
+        r"cannot identify image file '\1'"
+    ),
+)
+
+import re
+msg_replacement_rules = [(re.compile(r),t) for r,t in msg_replacement_rules]
+
+def improve_error_message(msg):
+    for r,t in msg_replacement_rules:
+        m = r.match(msg)
+        if m:
+            return m.expand(t)
+    return msg
+
+def make_error_response(err):
+    err_msg = improve_error_message(err.message)
+    body = json.dumps({ 'error' : err_msg }) + "\n"
+    headers = (
+                ('Content-Type', 'application/json'),
+                ('Content-Length', str(len(body))),
+        )
+    return headers, body
+
 def handle_request(environ, start_response):
     try:
         imgfile_path = get_posted_image(environ)
@@ -107,12 +133,8 @@ def handle_request(environ, start_response):
     except HTTPException as e:
         start_response(e[0], ())
     except Exception as e:
-        response_body = json.dumps({ 'error' : e.message })
-        response_headers = [
-                    ('Content-Type', 'application/json'),
-                    ('Content-Length', str(len(response_body))),
-                ]
-        start_response('500 Internal Server Error', response_headers, sys.exc_info())
-        yield response_body
+        headers, body = make_error_response(e)
+        start_response('500 Internal Server Error', headers, sys.exc_info())
+        yield body
     finally:
         tempdir.cleanup()

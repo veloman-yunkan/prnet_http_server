@@ -94,3 +94,16 @@ v 142.88794424 303.291693857 107.830162048 0.478431372549 0.321568627451 0.21960
 f 43866 43867 43806
 f 43867 43807 43806
 END
+
+check_output curl -sD - -F image=@"$0" http://localhost:8000 <<'END'
+HTTP/1.1 100 Continue
+
+HTTP/1.1 500 Internal Server Error
+Server: ???
+Date: ???
+Connection: close
+Content-Type: application/json
+Content-Length: 52
+
+{"error": "cannot identify image file 'run_tests'"}
+END
