@@ -1,9 +1,22 @@
-import os
 import json
+import numpy as np
+import os
+import re
 import sys
-from multipart import parse_form_data
 import tempfile
+
+from multipart import parse_form_data
 from shutil import rmtree
+
+from skimage.io import imread
+from skimage.transform import rescale
+
+from PRNet.api import PRN
+from PRNet.utils.write import write_obj_with_colors
+from httplib import HTTPException
+
+
+PRNET_MAX_IMAGE_SIZE = int(os.environ.get('PRNET_MAX_IMAGE_SIZE', '5000000'))
 
 class TempDir:
     def __init__(self):
@@ -23,18 +36,9 @@ class TempDir:
 
 
 tempdir = TempDir()
-
-import numpy as np
-from skimage.io import imread
-from skimage.transform import rescale
-
-from PRNet.api import PRN
-
-from PRNet.utils.write import write_obj_with_colors
-
 prn = PRN(is_dlib = True)
-def prnet(image_path):
 
+def prnet(image_path):
     image = imread(image_path)
     [h, w, c] = image.shape
     if c>3:
@@ -59,9 +63,6 @@ def prnet(image_path):
     write_obj_with_colors(obj_path, save_vertices, prn.triangles, colors)
     return obj_path
 
-PRNET_MAX_IMAGE_SIZE = int(os.environ.get('PRNET_MAX_IMAGE_SIZE', '5000000'))
-
-from httplib import HTTPException
 
 def get_posted_image(environ):
     path = environ['PATH_INFO']
@@ -83,6 +84,7 @@ def get_posted_image(environ):
     img.save_as(imgfile_path)
     return imgfile_path
 
+
 def read_file_chunks(file_path):
     with open(file_path, 'rb') as f:
         while True:
@@ -90,6 +92,7 @@ def read_file_chunks(file_path):
             if file_data is None or len(file_data) == 0:
                 break
             yield file_data
+
 
 def get_response_headers(result_file_path):
     result_file_size = os.stat(result_file_path).st_size
@@ -100,6 +103,7 @@ def get_response_headers(result_file_path):
             ('Content-Disposition', 'attachment; filename="%s"' % file_name)
         ]
 
+
 msg_replacement_rules = (
     (
         r"^cannot identify image file <open file u'.*/(.+)', mode 'rb' at .*>$",
@@ -107,7 +111,6 @@ msg_replacement_rules = (
     ),
 )
 
-import re
 msg_replacement_rules = [(re.compile(r),t) for r,t in msg_replacement_rules]
 
 def improve_error_message(msg):
@@ -117,6 +120,7 @@ def improve_error_message(msg):
             return m.expand(t)
     return msg
 
+
 def make_error_response(err):
     err_msg = improve_error_message(err.message)
     body = json.dumps({ 'error' : err_msg }) + "\n"
@@ -125,6 +129,7 @@ def make_error_response(err):
                 ('Content-Length', str(len(body))),
         )
     return headers, body
+
 
 def handle_request(environ, start_response):
     try:
